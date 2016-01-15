@@ -24,17 +24,21 @@
   }
 
   var ignoreRegexes = [];
-  chrome.storage.sync.get({
-    ignoreRegexes: [],
-    access_token: ''
-  }, function(items) {
-    items.ignoreRegexes.forEach(function(ignoreRegex) {
-      ignoreRegexes.push(new RegExp(ignoreRegex));
-    });
-    accessToken = items.access_token;
-    updateLoop();
-    setInterval(updateLoop, 60 * 1000);
-  });
+
+  function getSettings(theMessageEvent) {
+    if (theMessageEvent.name === "getSettings") {
+      var settings = theMessageEvent.message;
+      accessToken = settings.oauthToken;
+      ignoreRegexes = settings.ignoreRegexes.split(',').map(function(ignoreRegex) {
+        return new RegExp(ignoreRegex);
+      });
+      updateLoop();
+      setInterval(updateLoop, 60 * 1000);
+    }
+  }
+  safari.self.addEventListener("message", getSettings, false);
+  safari.self.tab.dispatchMessage("requestSettings");
+  
 
   /* hackily disable websocket notfication updates */
   [].forEach.call(document.querySelectorAll('[data-channel^=\'notification-changed:\']'),
@@ -56,16 +60,19 @@
     foundNotificationsToShow = false;
     for(var i = 0; i < notifications.length; i++) {
       var notification = notifications[i];
+      var shouldHideNotification = false;
       for(var j = 0; j < ignoreRegexes.length; j++) {
         var ignoreRegex = ignoreRegexes[j];
         if(!showIgnoredNotificationsAnyway &&
            ignoreRegex.test(notification.repository.full_name)) {
-          notification.__gns_hide = true;
-          foundNotificationsToHide = true;
-        } else {
-          notification.__gns_hide = false;
-          foundNotificationsToShow = true;
-        }
+          shouldHideNotification = true;
+      	  break;
+      	}
+      }
+      if (shouldHideNotification) {
+        foundNotificationsToHide = true;
+      } else {
+        foundNotificationsToShow = true;
       }
     }
   }
@@ -121,5 +128,8 @@
   notificationsDiv.classList.add('gms-hidden');
   notificationsMoreDiv.appendChild(a);
   notificationsDiv.appendChild(notificationsMoreDiv);
-  document.querySelector('.notifications-list').appendChild(notificationsDiv);
+  setTimeout(function() {
+  	document.querySelector('.notifications-list').appendChild(notificationsDiv);
+  }, 100);
+  
 })();

@@ -1,0 +1,20 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>global HTML page</title>
+<script type="text/javascript">
+function respondToMessage(theMessageEvent) {
+	if (theMessageEvent.name === "requestSettings") {
+		var settingsVal = {
+			oauthToken: safari.extension.secureSettings.oauthToken,
+			ignoreRegexes: safari.extension.settings.ignoreRegexes
+		};
+		theMessageEvent.target.page.dispatchMessage("getSettings", settingsVal);
+	}
+}
+safari.application.addEventListener("message", respondToMessage, false);
+</script>
+</head>
+<body>
+</body>
+</html>
